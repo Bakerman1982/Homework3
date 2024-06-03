@@ -1,0 +1,304 @@
+---
+title: "Homework 03 -- The Tidyverse"
+author: "Brock Akerman"
+format: html
+execute:
+  warning: false
+---
+```{r setup, eval=T, echo=T}
+library(tidyverse)
+library(DBI)
+library(RSQLite)
+```
+
+::: {}
+
+## Task #1:  Conceptual Questions
+
+**1. If your working directory is myfolder/homework/, what relative path would you specify to get the file located at myfolder/MyData.csv?**
+ 
+You could go up one level using cd.. in terminal.  If you are trying to read in data using a function that reads .csv files, I would use:  
+```{r, eval=F}
+read_csv("../MyData.csv")
+```
+ 
+**2. What are the major benefits of using R projects?**
+ 
+Using the R Project feature is excellent for keeping your work together both within the file and within a working directory.  Sharing your project and uploading it to a version control HUB like GitHub makes collaboration effortless.  
+ 
+**3. What is git and what is github?**
+
+Git is software that manages version control.  Github is a cloud service that hosts repositories to store your work. 
+
+**4. What are the two main differences between a tibble and a data.frame?**
+
+A tibble has updated printing output that only shows the first few rows along with some small tibble summary data like row counts.  A tibble also has defined parameters concerning subsetting and its strength is alerting you of problems at the beginning of the subsetting actions which prevent errors when running functions on that tibble downstream. When subsetting, tibbles do not coerce to vectorization for a single column.
+
+**5. Rewrite the following nested function call using baseR’s chaining operator: arrange(filter(select(as_tibble(iris), starts_with("Petal"), Species), Petal.Length < 1.55), Species)**
+
+```{r, eval=F}
+as_tibble(iris) %>%
+  sslect(starts_with("Petal"), Species) %>%
+  filter(Petal.Length) %>%
+  arrange(Species)
+```
+
+**6. What is meant by long format data and wide format data? Which do we generally prefer for statistical analysis?**
+
+The different formats describe the rectangular structure of the data.  In Long format, we end up with a table, tibble or dataframe that contains less columns and more rows.  This is the preferred method for statistical analysis.  Setting filtering parameters on column data is easy to execute than wide format.  We can also use long data formatting in more programs outside of R.  With Wide Format, we have fewer rows and more columns.  Wide format is useful in displaying data.  
+
+:::
+
+## Task #2:  Reading Delimited Data
+
+::: {}
+
+#### Glass Data
+
+**1. Read this data into R directly from the URL using functions from the tidyverse. Print out the tibble (just call the object name).**
+
+From URL (not evaluated)
+```{r, eval=F}
+glass <- read_csv("https://www4.stat.ncsu.edu/~online/datasets/glass.data",
+  col_names = c("Id","RI","Na","Mg","Al","Si","K","Ca","Ba","Fe","Type_of_glass"))
+glass_tbl <- as_tibble(glass)
+```
+
+From File (evaluated)
+```{r}
+glass <- read_csv("../Glassdata/glass.data",
+col_names = c("Id","RI","Na","Mg","Al","Si","K","Ca","Ba","Fe","Type_of_glass"))
+glass_tbl <- as_tibble(glass);glass_tbl;
+```
+
+**2. Start a chain that would overwrite the Type_of_glass variable using mutate().**
+
+```{r}
+glass_tbl <- glass_tbl |>
+  mutate(Type_of_glass = case_when(
+      Type_of_glass == 1 ~ 'building_windows_float_processed',
+      Type_of_glass == 2 ~ 'building_windows_non_float_processed',
+      Type_of_glass == 3 ~ 'vehicle_windows_float_processed',
+      Type_of_glass == 4 ~ 'vehicle_windows_non_float_processed (non in this database)',
+      Type_of_glass == 5 ~ 'containers',
+      Type_of_glass == 6 ~ 'tableware',
+      Type_of_glass == 7 ~ 'headlamps'))
+glass_tbl
+```
+
+**3. Continue your chain and keep only observations where the Fe variable is less than 0.2 and the Type of Glass is either “tableware” or “headlamp”. **
+ 
+```{r}
+glass_tbl <- glass_tbl |> filter(Fe < 0.2 & (Type_of_glass == "tableware" | Type_of_glass == "headlamps"))
+glass_tbl
+```
+
+:::
+
+#### Yeast Data
+
+:::{}
+
+**1. Read this data into R directly from the URL using functions from the tidyverse. Notice that the data doesn’t include column names- add those (in a manner of your choosing). Print out the tibble (just call the object name).**
+
+From URL (not evaluated)\
+```{r, eval=F}
+yeast <- read_csv("https://www4.stat.ncsu.edu/~online/datasets/yeast.data",
+  col_names = c("seq_name","mcg","gvh","alm","mit","erl","pox","vac","nuc","class"))
+yeast_tbl <- as_tibble(yeast)
+```
+
+From File (evaluated)\
+```{r}
+yeast <- read_table("../Yeast/yeast.data",
+                  col_names = c("seq_name","mcg","gvh","alm","mit","erl","pox","vac","nuc","class"));
+yeast_tbl <- as_tibble(yeast);
+yeast_tbl;
+```
+
+**2. Start a chain that removes the seq_name and nuc columns.**
+
+```{r}
+yeast_tbl <- yeast_tbl |> mutate(seq_name = NULL, nuc = NULL); yeast_tbl
+```
+
+**3. Continue your chain to add columns corresponding to the mean and median of each numeric variable (mcg, gvh, alm, mit, erl, pox, and vac) at each class grouping (see the across() function as we did in the dplyr video!) **
+
+```{r}
+yeast_tbl <- yeast_tbl |> group_by(class) |> mutate(across(where(is.numeric), mean, .names = "mean_{.col}"),across(where(is.numeric), median, .names = "median_{.col}")); yeast_tbl
+```
+
+:::
+
+## Task #3:  Combining Excel and Delimited Data
+
+::: {}
+
+**1. There is an excel version of the white wine data set available at https://www4.stat.ncsu.edu/~online/ datasets/white-wine.xlsx. **\
+ • **Download this file **\
+ • **Place it in a folder you know (such as your working directory for your project) **\
+ • **Import the data from the first sheet using the readxl package **\
+ • **Print out the tibble (just call the object name) **\
+ 
+```{r}
+whitewine <- read_delim("../WineQuality/winequality-white.csv", delim = ";")
+whitewine <- as_tibble(whitewine)
+whitewine
+```
+ 
+**2. **
+ • **Readin the data from the 2nd sheet. This should return a data frame with one column containing alternative versions of the variable names. **\
+ • **Grab that column and overwrite the current column names (colnames()) of your white wine tibble. **\
+
+```{r}
+
+ #"Reading Excel Data"
+
+col_names <- c("fixed acidity","volatile acidity","citric acid","residuall sugar","chlorides","free sulfure dioxide","total sulfur dioxide","density","pH","sulphates","alcohol","quality")
+colnames(whitewine) <- col_names
+```
+
+**3. Lastly, add a column to this data set to indicate the wines are white. That is, add a column that has values of ‘white’ for every observation.**\
+
+```{r}
+whitewine <- whitewine |> mutate("wine color" = "White")
+```
+
+**4. There is a semi-colon delimited version of the red wine data set available at https://www4.stat.ncsu. edu/~online/datasets/red-wine.csv.**\
+ • **Readthis in using the readr package. Be careful that the columns are read in as the correct type!**\
+ • **You should replace the variable names as done above**\
+ • **You should append a column denoting the type as “red”**\
+
+```{r}
+redwine <- read_delim("../WineQuality/winequality-red.csv", delim = ";")
+col_names <- c("fixed acidity","volatile acidity","citric acid","residuall sugar","chlorides","free sulfure dioxide","total sulfur dioxide","density","pH","sulphates","alcohol","quality")
+redwine <- as_tibble(redwine)
+colnames(redwine) = col_names
+redwine <- redwine |> mutate("wine color" = "Red")
+redwine
+```
+
+**5. Combine these two data sets into one data set. They both have the exact same columns so this is an easy append task!**\
+ • **Use the dplyr::bind_rows() function (see the help) to create one tibble containing all of the wine data.**\
+
+```{r}
+comb_wines <- bind_rows(whitewine, redwine)
+
+#also worked
+#full_join(whitewine, redwine)
+```
+
+**6. Start a chain onr your new combined data object to filter the data to only look at high-quality wines(quality > 6.5) and wines that have a reasonable alcohol value (alcohol < 132).**
+
+```{r}
+comb_wines |> filter(quality > 6.5 & alcohol < 132)
+```
+
+**7. Continue your chain to now sort the data from highest quality to lowest.**\
+
+```{r, eval=F}
+comb_wines <- comb_wines |> filter(quality > 6.5 & alcohol < 132) |> arrange(quality, decreasing = TRUE)
+```
+
+**8. Continue your chain to select only the variables that contain acid, the alcohol variable, the type variable, and the quality variable.**\
+
+```{r}
+comb_wines <- comb_wines |> select(`citric acid`, alcohol, `wine color`, quality) |> filter(quality > 6.5 & alcohol < 132) |> arrange(quality, decreasing = TRUE)
+```
+
+**9. Continue your chain to add the mean and standard deviation of the alcohol variable to the data set for each setting of the quality variable.**\
+
+```{r} 
+comb_wines <- comb_wines |> select(`citric acid`, alcohol, `wine color`, quality) |> filter(quality > 6.5 & alcohol < 132) |> arrange(quality, decreasing = TRUE) |> group_by(quality) |> mutate(`mean_alc` = mean(alcohol), `sd_alc` = sd(alcohol))
+```
+
+:::
+
+## Task #4: Database Practice
+
+::: {}
+
+**1. Connect to the database and then look at all of the tables in the database.**\
+
+```{r}
+con <- DBI::dbConnect(RSQLite::SQLite(), dbname = "lahman.db")
+con
+DBI::dbListTables(con)
+tbl(con, "Teams")
+```
+
+**2. Use the tbl() function and dplyr to return all of the data from the Teams table for the year 2015.**\
+
+```{r}
+team_tbl2 <- tbl(con, "Teams") |> filter(yearID == 2015);team_tbl2;
+```
+
+**3. Repeat the above by using the sql() function within tbl() (here you have to write actual SQL!). Either use dplyr or write SQL queries for the rest of these questions!**\
+
+```{r}
+team_tbl3 <- tbl(con, sql("SELECT * FROM `Teams` WHERE 1=1 AND (yearid == 2015)"));team_tbl3;
+```
+
+**4. Return all of the players in the hall of fame, the year they were voted into the hall of fame, and their category (only those three variables!). See the HallOfFame table, the inducted variable is important here.**\
+
+```{r}
+tbl(con, sql("SELECT playerID, yearID, category from `HallOfFame` where 1=1 and inducted = 'Y'"))
+```
+
+**5. Combine the table from the previous question with the People table in order to have the nameFirst and nameLast names added to what was returned above.**\
+
+```{r}
+MyHOFData <- tbl(con, sql("
+SELECT 
+  P.nameLast as Last_Name,
+  P.nameFirst as First_Name, 
+  HF.playerID as PlayerID,
+  HF.yearID as YearID, 
+  HF.category as Category
+from People as P
+join HallOfFame as HF on P.playerID = HF.playerID
+  where 1=1 and inducted = 'Y'"))
+
+```
+
+**6. Return only the playerID (manager ID in this case), G, W, and L columns from the Managers table. Use chaining to then:**\
+ • **Determine the overall win/loss records (sum of wins and sum of losses) for each of these hall of fame managers.– Wehaven’t quite covered this so I’ll help out. We want to use group_by() with summarize() rather than mutate(). Something like this: tbl(con, "Managers") |> select(...) |> group_by(playerID) |> summarize(G_managed = sum(G, na.rm = TRUE), Total_W = sum(W, na.rm = TRUE), Total_L = sum(L, na.rm = TRUE))**\
+ • **Create a new variable that is the career win/loss percentage (Total_W/G_managed). (Note: I did this after collect() otherwise the column type has to be set...)**\
+ • **Sort the resulting data by the win/loss percentage variable (from largest to smallest).**\
+
+```{r}
+MyMgrData <- tbl(con, "Managers") |>
+  select(playerID,G,W,L) |>
+  group_by(playerID) |>
+  summarize(GamesManaged = sum(G),
+    TotalWins = sum(W),
+    TotalLoss = sum(L)) |>
+  collect() |>
+  mutate("WinPercent" = TotalWins/GamesManaged) |>
+  arrange("WinPercent")
+```
+
+**7. Use the results from the previous two questions to answer this one! Return information for only the people that managed a team and were inducted into the hall of fame (regardless of their category in the hall of fame- you want to return all people in the hall of fame that ever managed at all). (Just return all of the variables from both of the above two questions- 9 total columns)**\
+ 
+```{r}
+Finale <- MyHOFData |> 
+  inner_join(MyHOFData, MyMgrData, by = "PlayerID")
+Finale
+```
+ 
+:::
+
+## Link Repo\S
+TASK 1 - COMPLETED\
+
+TASK 2 - \
+  REQUIRES DATA FROM:\
+    https://www4.stat.ncsu.edu/~online/datasets/glass.data (DOWNLOADED)\
+    https://www4.stat.ncsu.edu/~online/datasets/yeast.data (DOWNLOADED)\
+
+TASK 3 - \
+  REQUIRES DATA FROM:\
+    https://www4.stat.ncsu.edu/~online/datasets/white-wine.xlsx (DOWNLOADED)\
+    https://www4.stat.ncsu.edu/~online/datasets/red-wine.csv (DOWNLOADED)\
+
+TASK 4 - Lahman.db file "Connecting to Databases" notes (AVAIL)\
